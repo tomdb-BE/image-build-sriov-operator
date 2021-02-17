@@ -1,0 +1,5 @@
+[centos-7-appstream]
+name = Centos 7
+baseurl = http://mirror.centos.org/centos-7/7/os/x86_64
+enabled = 1
+gpgcheck = 0
