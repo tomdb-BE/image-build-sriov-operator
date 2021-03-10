@@ -4,18 +4,24 @@ ifeq ($(ARCH),)
 ARCH=$(shell go env GOARCH)
 endif
 
+BUILD_META=-build$(shell date +%Y%m%d)
 ORG ?= rancher
-TAG ?= release-4.8
+TAG ?= release-4.8$(BUILD_META)
 
 ifneq ($(DRONE_TAG),)
 TAG := $(DRONE_TAG)
 endif
 
+ifeq (,$(filter %$(BUILD_META),$(TAG)))
+$(error TAG needs to end with build metadata: $(BUILD_META))
+endif
+
 .PHONY: image-build-operator
 image-build-operator:
 	docker build \
+		--pull \
 		--build-arg ARCH=$(ARCH) \
-		--build-arg TAG=$(TAG) \
+		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG)-$(ARCH) \
 	.
@@ -39,9 +45,10 @@ image-scan-operator:
 .PHONY: image-build-network-config-daemon
 image-build-network-config-daemon:
 	docker build \
+		--pull \
 		-f Dockerfile.sriov-network-config-daemon \
 		--build-arg ARCH=$(ARCH) \
-		--build-arg TAG=$(TAG) \
+		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG)-$(ARCH) \
 	.
