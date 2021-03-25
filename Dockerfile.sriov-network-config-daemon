@@ -1,23 +1,20 @@
 ARG TAG="release-4.8"
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
-ARG GO_IMAGE=rancher/hardened-build-base:v1.15.2b5
+ARG GO_IMAGE=goboring/golang:1.15.8b5
 
 # Build the project
 FROM ${GO_IMAGE} as builder
-RUN set -x \
- && apk --no-cache add \
-    git \
-    make \
-    patch
 ARG TAG
+RUN apt update && apt -y install patch
 RUN git clone https://github.com/k8snetworkplumbingwg/sriov-network-operator
 WORKDIR sriov-network-operator
 RUN git fetch --all --tags --prune
 RUN git branch -a
 RUN git checkout remotes/origin/${TAG} -b ${TAG}
-COPY 0001-CGO_ENABLED.patch .
-RUN patch -p1 < 0001-CGO_ENABLED.patch
-ENV CGO_ENABLED=0
+COPY 0003-Allow-adding-GOFLAGS.patch 0002-Change-the-module-URL-from-openshift-to-k8snetworkpl.patch ./
+RUN patch -p1 < 0002-Change-the-module-URL-from-openshift-to-k8snetworkpl.patch
+RUN patch -p1 < 0003-Allow-adding-GOFLAGS.patch
+ENV GOFLAGS=-trimpath
 RUN make clean && make _build-sriov-network-config-daemon
 RUN make plugins
 

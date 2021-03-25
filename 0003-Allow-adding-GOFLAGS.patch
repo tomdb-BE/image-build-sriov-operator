@@ -1,0 +1,26 @@
+From e5ff2bd51dd7d7a04b022e86572617c17a8360cb Mon Sep 17 00:00:00 2001
+From: Manuel Buil <mbuil@suse.com>
+Date: Wed, 24 Mar 2021 17:15:06 +0100
+Subject: [PATCH] Allow adding GOFLAGS
+
+Signed-off-by: Manuel Buil <mbuil@suse.com>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 030cebd8..eb80c5cf 100644
+--- a/Makefile
++++ b/Makefile
+@@ -18,7 +18,7 @@ MAIN_PKG=cmd/manager/main.go
+ export NAMESPACE?=openshift-sriov-network-operator
+ export WATCH_NAMESPACE?=openshift-sriov-network-operator
+ export ENABLE_ADMISSION_CONTROLLER?=true
+-export GOFLAGS=-mod=vendor
++export GOFLAGS+=-mod=vendor
+ export GO111MODULE=on
+ PKGS=$(shell go list ./... | grep -v -E '/vendor/|/test|/examples')
+ 
+-- 
+2.26.2
+

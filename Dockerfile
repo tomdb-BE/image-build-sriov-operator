@@ -14,8 +14,9 @@ RUN git clone https://github.com/k8snetworkplumbingwg/sriov-network-operator
 WORKDIR sriov-network-operator
 RUN git fetch --all --tags --prune
 RUN git checkout remotes/origin/${TAG} -b ${TAG}
-COPY 0001-CGO_ENABLED.patch .
+COPY 0001-CGO_ENABLED.patch 0002-Change-the-module-URL-from-openshift-to-k8snetworkpl.patch ./
 RUN patch -p1 < 0001-CGO_ENABLED.patch
+RUN patch -p1 < 0002-Change-the-module-URL-from-openshift-to-k8snetworkpl.patch
 ENV CGO_ENABLED=0
 RUN make clean && make _build-manager
 
