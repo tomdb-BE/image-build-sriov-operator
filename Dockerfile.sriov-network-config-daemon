@@ -26,5 +26,6 @@ RUN microdnf update -y && ARCH_DEP_PKGS=$(if [ "$(uname -m)" != "s390x" ]; then 
     microdnf install hwdata $ARCH_DEP_PKGS
 COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/sriov-network-config-daemon /usr/bin/
 COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/plugins /plugins
+COPY --from=builder /go/sriov-network-operator/bindata /bindata
 ENV PLUGINSPATH=/plugins
 ENTRYPOINT ["/usr/bin/sriov-network-config-daemon"]
