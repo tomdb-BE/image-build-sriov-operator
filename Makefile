@@ -69,3 +69,29 @@ image-manifest-network-config-daemon:
 image-scan-network-config-daemon:
 	trivy --severity $(SEVERITIES) --no-progress --ignore-unfixed $(ORG)/hardened-sriov-network-config-daemon:$(TAG)
 
+.PHONY: image-build-sriov-network-webhook
+image-build-sriov-network-webhook:
+	docker build \
+		--pull \
+		-f Dockerfile.webhook \
+		--build-arg ARCH=$(ARCH) \
+		--build-arg TAG=$(TAG:$(BUILD_META)=) \
+		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG) \
+		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG)-$(ARCH) \
+	.
+
+.PHONY: image-push-sriov-network-webhook
+image-push-sriov-network-webhook:
+	docker push $(ORG)/hardened-sriov-network-webhook:$(TAG)-$(ARCH)
+
+.PHONY: image-manifest-sriov-network-webhook
+image-manifest-sriov-network-webhook:
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend \
+		$(ORG)/hardened-sriov-network-webhook:$(TAG) \
+		$(ORG)/hardened-sriov-network-webhook:$(TAG)-$(ARCH)
+	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push \
+		$(ORG)/hardened-sriov-network-webhook:$(TAG)
+
+.PHONY: image-scan-sriov-network-webhook
+image-scan-sriov-network-webhook:
+	trivy --severity $(SEVERITIES) --no-progress --ignore-unfixed $(ORG)/hardened-sriov-network-webhook:$(TAG)
