@@ -14,6 +14,7 @@ steps:
   commands:
   - make DRONE_TAG=${DRONE_TAG} image-build-operator
   - make DRONE_TAG=${DRONE_TAG} image-build-network-config-daemon
+  - make DRONE_TAG=${DRONE_TAG} image-build-sriov-network-webhook
   volumes:
   - name: docker
     path: /var/run/docker.sock
@@ -24,6 +25,7 @@ steps:
   - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
   - make DRONE_TAG=${DRONE_TAG} image-push-operator image-manifest-operator
   - make DRONE_TAG=${DRONE_TAG} image-push-network-config-daemon image-manifest-network-config-daemon
+  - make DRONE_TAG=${DRONE_TAG} image-push-sriov-network-webhook image-manifest-sriov-network-webhook
   environment:
     DOCKER_PASSWORD:
       from_secret: docker_password
@@ -41,6 +43,7 @@ steps:
   commands:
   - make DRONE_TAG=${DRONE_TAG} image-scan-operator
   - make DRONE_TAG=${DRONE_TAG} image-scan-network-config-daemon
+  - make DRONE_TAG=${DRONE_TAG} image-scan-sriov-network-webhook
   volumes:
   - name: docker
     path: /var/run/docker.sock
