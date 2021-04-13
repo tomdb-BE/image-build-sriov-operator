@@ -1,4 +1,4 @@
-ARG TAG="release-4.8"
+ARG TAG="v1.0.0"
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
 ARG GO_IMAGE=rancher/hardened-build-base:v1.15.8b5
 
@@ -10,15 +10,14 @@ RUN set -x \
     make \
     patch
 ARG TAG
-RUN git clone https://github.com/k8snetworkplumbingwg/sriov-network-operator
-WORKDIR sriov-network-operator
-RUN git fetch --all --tags --prune
-RUN git checkout remotes/origin/${TAG} -b ${TAG}
-COPY 0001-CGO_ENABLED.patch 0002-Change-the-module-URL-from-openshift-to-k8snetworkpl.patch ./
-RUN patch -p1 < 0001-CGO_ENABLED.patch
-RUN patch -p1 < 0002-Change-the-module-URL-from-openshift-to-k8snetworkpl.patch
 ENV CGO_ENABLED=0
-RUN make clean && make _build-manager
+COPY 0001-CGO_ENABLED.patch . 
+RUN git clone https://github.com/k8snetworkplumbingwg/sriov-network-operator \
+    && cd sriov-network-operator \
+    && git fetch --all --tags --prune \
+    && git checkout ${TAG} -b ${TAG} \
+    && patch -p1 < ../0001-CGO_ENABLED.patch \
+    && make clean && make _build-manager
 
 # Create the sriov-cni image
 FROM ${UBI_IMAGE}
