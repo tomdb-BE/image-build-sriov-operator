@@ -7,6 +7,7 @@ endif
 BUILD_META=-build$(shell date +%Y%m%d)
 ORG ?= rancher
 TAG ?= v1.0.0$(BUILD_META)
+export DOCKER_BUILDKIT?=1
 
 ifneq ($(DRONE_TAG),)
 TAG := $(DRONE_TAG)
@@ -22,6 +23,8 @@ image-build-operator:
 		--pull \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
+		--build-arg BUILD=$(BUILD_META) \
+		--target operator \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG)-$(ARCH) \
 	.
@@ -46,9 +49,10 @@ image-scan-operator:
 image-build-network-config-daemon:
 	docker build \
 		--pull \
-		-f Dockerfile.sriov-network-config-daemon \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
+		--build-arg BUILD=$(BUILD_META) \
+		--target config-daemon \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG)-$(ARCH) \
 	.
@@ -73,9 +77,10 @@ image-scan-network-config-daemon:
 image-build-sriov-network-webhook:
 	docker build \
 		--pull \
-		-f Dockerfile.webhook \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
+		--build-arg BUILD=$(BUILD_META) \
+		--target webhook \
 		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG)-$(ARCH) \
 	.

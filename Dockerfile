@@ -1,26 +1,58 @@
 ARG TAG="v1.0.0"
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
-ARG GO_IMAGE=rancher/hardened-build-base:v1.15.8b5
+ARG GOBORING_IMAGE=goboring/golang:1.15.8b5
+ARG HARDENED_IMAGE=rancher/hardened-build-base:v1.15.8b5
 
-# Build the project
-FROM ${GO_IMAGE} as builder
-RUN set -x \
- && apk --no-cache add \
-    git \
-    make \
-    patch
+FROM ${HARDENED_IMAGE} as base-builder
 ARG TAG
-ENV CGO_ENABLED=0
-COPY 0001-CGO_ENABLED.patch . 
-RUN git clone https://github.com/k8snetworkplumbingwg/sriov-network-operator \
-    && cd sriov-network-operator \
-    && git fetch --all --tags --prune \
-    && git checkout ${TAG} -b ${TAG} \
-    && patch -p1 < ../0001-CGO_ENABLED.patch \
-    && make clean && make _build-manager
+ARG BUILD
+ENV VERSION_OVERRIDE=${TAG}${BUILD}
+COPY patch patch
+RUN git clone --depth 1 --branch ${TAG} https://github.com/k8snetworkplumbingwg/sriov-network-operator \
+    && cd sriov-network-operator \ 
+    && git apply ../patch/* \
+    && make clean
 
-# Create the sriov-cni image
-FROM ${UBI_IMAGE}
+FROM base-builder as builder
+ENV CGO_ENABLED=0
+RUN cd sriov-network-operator \
+    && make _build-manager \
+    && make _build-webhook
+
+FROM ${GOBORING_IMAGE} as config-daemon-builder
+ARG TAG
+ARG BUILD
+ENV VERSION_OVERRIDE=${TAG}${BUILD}
+ENV GOFLAGS=-trimpath
+COPY --from=base-builder /go/sriov-network-operator /go/sriov-network-operator
+RUN cd sriov-network-operator \
+    && make _build-sriov-network-config-daemon \
+    && make plugins
+
+# Create the config daemon image
+FROM ${UBI_IMAGE} as config-daemon
+WORKDIR /
+COPY centos.repo /etc/yum.repos.d/centos.repo
+RUN microdnf update -y \
+    && ARCH_DEP_PKGS=$(if [ "$(uname -m)" != "s390x" ]; then echo -n mstflint ; fi) \
+    && microdnf install hwdata $ARCH_DEP_PKGS \
+    && microdnf clean all
+COPY --from=config-daemon-builder /go/sriov-network-operator/build/_output/linux/amd64/sriov-network-config-daemon /usr/bin/
+COPY --from=config-daemon-builder /go/sriov-network-operator/build/_output/linux/amd64/plugins /plugins
+COPY --from=config-daemon-builder /go/sriov-network-operator/bindata /bindata
+ENV PLUGINSPATH=/plugins
+ENTRYPOINT ["/usr/bin/sriov-network-config-daemon"]
+
+# Create the webhook image
+FROM ${UBI_IMAGE} as webhook
+WORKDIR /
+LABEL io.k8s.display-name="sriov-network-webhook" \
+      io.k8s.description="This is an admission controller webhook that mutates and validates customer resources of sriov network operator."
+COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/webhook /usr/bin/webhook
+CMD ["/usr/bin/webhook"]
+
+# Create the operator image
+FROM ${UBI_IMAGE} as operator
 WORKDIR /
 COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/manager /usr/bin/sriov-network-operator
 COPY --from=builder /go/sriov-network-operator/bindata /bindata
