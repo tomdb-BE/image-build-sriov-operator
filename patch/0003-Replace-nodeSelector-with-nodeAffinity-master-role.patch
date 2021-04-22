@@ -1,0 +1,76 @@
+From ce94e60b2fed6298c0ecf28d39d093e3e18494eb Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jaime=20Caama=C3=B1o=20Ruiz?= <jcaamano@suse.com>
+Date: Thu, 18 Feb 2021 17:05:27 +0100
+Subject: [PATCH 3/4] Replace nodeSelector with nodeAffinity master role
+
+Label node-role.kubernetes.io/master has traditionally no value
+associated inherited from kubeadm deplyments but some platforms use
+"true" as value. Use node affinity instead of node selector ignoring the
+value of the label.
+---
+ bindata/manifests/operator-webhook/server.yaml | 8 +++++++-
+ bindata/manifests/webhook/server.yaml          | 8 +++++++-
+ deploy/operator.yaml                           | 9 +++++++--
+ 3 files changed, 21 insertions(+), 4 deletions(-)
+
+diff --git a/bindata/manifests/operator-webhook/server.yaml b/bindata/manifests/operator-webhook/server.yaml
+index cefbb7e3..4a9e6349 100644
+--- a/bindata/manifests/operator-webhook/server.yaml
++++ b/bindata/manifests/operator-webhook/server.yaml
+@@ -24,7 +24,13 @@ spec:
+       serviceAccountName: operator-webhook-sa
+       nodeSelector:
+         beta.kubernetes.io/os: linux
+-        node-role.kubernetes.io/master:
++      affinity:
++        nodeAffinity:
++          requiredDuringSchedulingIgnoredDuringExecution:
++            nodeSelectorTerms:
++            - matchExpressions:
++              - key: node-role.kubernetes.io/master
++                operator: Exists
+       tolerations:
+       - key: "node-role.kubernetes.io/master"
+         operator: Exists
+diff --git a/bindata/manifests/webhook/server.yaml b/bindata/manifests/webhook/server.yaml
+index 489d7f6d..0ee66b8d 100644
+--- a/bindata/manifests/webhook/server.yaml
++++ b/bindata/manifests/webhook/server.yaml
+@@ -27,7 +27,13 @@ spec:
+       serviceAccountName: network-resources-injector-sa
+       nodeSelector:
+         beta.kubernetes.io/os: linux
+-        node-role.kubernetes.io/master:
++      affinity:
++        nodeAffinity:
++          requiredDuringSchedulingIgnoredDuringExecution:
++            nodeSelectorTerms:
++            - matchExpressions:
++              - key: node-role.kubernetes.io/master
++                operator: Exists
+       tolerations:
+       - key: "node-role.kubernetes.io/master"
+         operator: Exists
+diff --git a/deploy/operator.yaml b/deploy/operator.yaml
+index 36872193..716fac25 100644
+--- a/deploy/operator.yaml
++++ b/deploy/operator.yaml
+@@ -12,8 +12,13 @@ spec:
+       labels:
+         name: sriov-network-operator
+     spec:
+-      nodeSelector:
+-        node-role.kubernetes.io/master: ""
++      affinity:
++        nodeAffinity:
++          requiredDuringSchedulingIgnoredDuringExecution:
++            nodeSelectorTerms:
++            - matchExpressions:
++              - key: node-role.kubernetes.io/master
++                operator: Exists
+       tolerations:
+       - effect: NoSchedule
+         key: node-role.kubernetes.io/master
+-- 
+2.26.2
+

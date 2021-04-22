@@ -1,0 +1,288 @@
+From 98dda3b9e7cc924c5a89708f6189828f10896da5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jaime=20Caama=C3=B1o=20Ruiz?= <jcaamano@suse.com>
+Date: Mon, 22 Feb 2021 13:09:44 +0100
+Subject: [PATCH 4/4] Add webhook certificate handling for k8s
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds support for webhooks in k8s deployments through options to handle
+webhoook certificate configuration, either via providing the CA bundle
+through environment variable or cert-manager annotations.
+
+Signed-off-by: Jaime Caamaño Ruiz <jcaamano@suse.com>
+---
+ Makefile                                      |  4 +-
+ .../operator-webhook/001-service.yaml         |  2 +
+ .../operator-webhook/003-webhook.yaml         | 14 +++
+ bindata/manifests/webhook/001-service.yaml    |  2 +
+ bindata/manifests/webhook/003-webhook.yaml    |  7 ++
+ controllers/sriovoperatorconfig_controller.go |  2 +
+ deploy/operator.yaml                          |  2 +
+ doc/quickstart.md                             | 86 ++++++++++++++++++-
+ hack/env.sh                                   |  1 +
+ 9 files changed, 116 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 08f078d5..03b5f765 100644
+--- a/Makefile
++++ b/Makefile
+@@ -18,7 +18,6 @@ IMAGE_TAG?=nfvpe/$(APP_NAME):latest
+ MAIN_PKG=cmd/manager/main.go
+ export NAMESPACE?=openshift-sriov-network-operator
+ export WATCH_NAMESPACE?=openshift-sriov-network-operator
+-export ENABLE_ADMISSION_CONTROLLER?=true
+ export GOFLAGS+=-mod=vendor
+ export GO111MODULE=on
+ PKGS=$(shell go list ./... | grep -v -E '/vendor/|/test|/examples')
+@@ -189,11 +188,12 @@ bundle: manifests
+ bundle-build:
+ 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+ 
++deploy-setup: export ENABLE_ADMISSION_CONTROLLER?=true
+ deploy-setup: skopeo install
+ 	hack/deploy-setup.sh $(NAMESPACE)
+ 
+ deploy-setup-k8s: export NAMESPACE=sriov-network-operator
+-deploy-setup-k8s: export ENABLE_ADMISSION_CONTROLLER=false
++deploy-setup-k8s: export ENABLE_ADMISSION_CONTROLLER?=false
+ deploy-setup-k8s: export CNI_BIN_PATH=/opt/cni/bin
+ deploy-setup-k8s: export OPERATOR_EXEC=kubectl
+ deploy-setup-k8s: export CLUSTER_TYPE=kubernetes
+diff --git a/bindata/manifests/operator-webhook/001-service.yaml b/bindata/manifests/operator-webhook/001-service.yaml
+index 4000ae39..db02db96 100644
+--- a/bindata/manifests/operator-webhook/001-service.yaml
++++ b/bindata/manifests/operator-webhook/001-service.yaml
+@@ -5,7 +5,9 @@ metadata:
+   name: operator-webhook-service
+   namespace: {{.Namespace}}
+   annotations:
++    {{if and (not .CaBundle) (eq .ClusterType "openshift")}}
+     service.alpha.openshift.io/serving-cert-secret-name: operator-webhook-service
++    {{end}}
+ spec:
+   ports:
+   - port: 443
+diff --git a/bindata/manifests/operator-webhook/003-webhook.yaml b/bindata/manifests/operator-webhook/003-webhook.yaml
+index f84f29a4..c972ef24 100644
+--- a/bindata/manifests/operator-webhook/003-webhook.yaml
++++ b/bindata/manifests/operator-webhook/003-webhook.yaml
+@@ -5,7 +5,11 @@ metadata:
+   name: {{.SRIOVMutatingWebhookName}}
+   namespace: {{.Namespace}}
+   annotations:
++    {{if and (not .CaBundle) (eq .ClusterType "openshift") }}
+     service.beta.openshift.io/inject-cabundle: "true"
++    {{else if and (not .CaBundle) (eq .ClusterType "kubernetes") }}
++    cert-manager.io/inject-ca-from: {{.Namespace}}/operator-webhook-service
++    {{end}}
+ webhooks:
+   - name: operator-webhook.sriovnetwork.openshift.io
+     failurePolicy: Fail
+@@ -14,6 +18,9 @@ webhooks:
+         name: operator-webhook-service
+         namespace: {{.Namespace}}
+         path: "/mutating-custom-resource"
++      {{if .CaBundle}}
++      caBundle: "{{.CaBundle}}"
++      {{end}}
+     rules:
+       - operations: [ "CREATE", "UPDATE" ]
+         apiGroups: ["sriovnetwork.openshift.io"]
+@@ -27,7 +34,11 @@ metadata:
+   name: {{.SRIOVMutatingWebhookName}}
+   namespace: {{.Namespace}}
+   annotations:
++    {{if and (not .CaBundle) (eq .ClusterType "openshift")}}
+     service.beta.openshift.io/inject-cabundle: "true"
++    {{else if and (not .CaBundle) (eq .ClusterType "kubernetes")}}
++    cert-manager.io/inject-ca-from: {{.Namespace}}/operator-webhook-service
++    {{end}}
+ webhooks:
+   - name: operator-webhook.sriovnetwork.openshift.io
+     failurePolicy: Fail
+@@ -36,6 +47,9 @@ webhooks:
+         name: operator-webhook-service
+         namespace: {{.Namespace}}
+         path: "/validating-custom-resource"
++      {{if .CaBundle}}
++      caBundle: "{{.CaBundle}}"
++      {{end}}
+     rules:
+       - operations: [ "CREATE", "UPDATE", "DELETE" ]
+         apiGroups: ["sriovnetwork.openshift.io"]
+diff --git a/bindata/manifests/webhook/001-service.yaml b/bindata/manifests/webhook/001-service.yaml
+index ae9fb8c3..07faa0bb 100644
+--- a/bindata/manifests/webhook/001-service.yaml
++++ b/bindata/manifests/webhook/001-service.yaml
+@@ -5,7 +5,9 @@ metadata:
+   name: network-resources-injector-service
+   namespace: {{.Namespace}}
+   annotations:
++    {{if and (not .CaBundle) (eq .ClusterType "openshift")}}
+     service.alpha.openshift.io/serving-cert-secret-name: network-resources-injector-secret
++    {{end}}
+ spec:
+   ports:
+   - port: 443
+diff --git a/bindata/manifests/webhook/003-webhook.yaml b/bindata/manifests/webhook/003-webhook.yaml
+index e7b99265..6dc93da3 100644
+--- a/bindata/manifests/webhook/003-webhook.yaml
++++ b/bindata/manifests/webhook/003-webhook.yaml
+@@ -5,7 +5,11 @@ metadata:
+   name: {{.SRIOVMutatingWebhookName}}
+   namespace: {{.Namespace}}
+   annotations:
++    {{if and (not .CaBundle) (eq .ClusterType "openshift")}}
+     service.beta.openshift.io/inject-cabundle: "true"
++    {{else if and (not .CaBundle) (eq .ClusterType "kubernetes")}}
++    cert-manager.io/inject-ca-from: {{.Namespace}}/network-resources-injector-secret
++    {{end}}
+ webhooks:
+   - name: network-resources-injector-config.k8s.io
+     clientConfig:
+@@ -13,6 +17,9 @@ webhooks:
+         name: network-resources-injector-service
+         namespace: {{.Namespace}}
+         path: "/mutate"
++      {{if .CaBundle}}
++      caBundle: "{{.CaBundle}}"
++      {{end}}
+     rules:
+       - operations: [ "CREATE" ]
+         apiGroups: ["apps", ""]
+diff --git a/controllers/sriovoperatorconfig_controller.go b/controllers/sriovoperatorconfig_controller.go
+index ca123c37..6cecb7a2 100644
+--- a/controllers/sriovoperatorconfig_controller.go
++++ b/controllers/sriovoperatorconfig_controller.go
+@@ -213,6 +213,8 @@ func (r *SriovOperatorConfigReconciler) syncWebhookObjs(dc *sriovnetworkv1.Sriov
+ 		data.Data["NetworkResourcesInjectorImage"] = os.Getenv("NETWORK_RESOURCES_INJECTOR_IMAGE")
+ 		data.Data["SriovNetworkWebhookImage"] = os.Getenv("SRIOV_NETWORK_WEBHOOK_IMAGE")
+ 		data.Data["ReleaseVersion"] = os.Getenv("RELEASEVERSION")
++		data.Data["ClusterType"] = utils.ClusterType
++		data.Data["CaBundle"] = os.Getenv("WEBHOOK_CA_BUNDLE")
+ 		objs, err := render.RenderDir(path, &data)
+ 		if err != nil {
+ 			logger.Error(err, "Fail to render webhook manifests")
+diff --git a/deploy/operator.yaml b/deploy/operator.yaml
+index 716fac25..3000d4c9 100644
+--- a/deploy/operator.yaml
++++ b/deploy/operator.yaml
+@@ -68,3 +68,5 @@ spec:
+               value: $CNI_BIN_PATH
+             - name: CLUSTER_TYPE
+               value: $CLUSTER_TYPE
++            - name: WEBHOOK_CA_BUNDLE
++              value: "$WEBHOOK_CA_BUNDLE"
+diff --git a/doc/quickstart.md b/doc/quickstart.md
+index 8c2e0cfb..fad0ce2f 100644
+--- a/doc/quickstart.md
++++ b/doc/quickstart.md
+@@ -54,11 +54,93 @@ make deploy-setup
+ 
+ If you are running a Kubernetes cluster:
+ ```bash
+-export OPERATOR_EXEC=kubectl
+-export ENABLE_ADMISSION_CONTROLLER=false
+ make deploy-setup-k8s
+ ```
+ 
++Webhooks are disabled when deploying on a Kubernetes cluster as per the instructions above. To enable webhooks on Kubernetes cluster, there are two options:
++
++1. Create certificates for each of the two webhooks using a single CA whose cert you provide through an environment variable.
++
++   For example, given `cacert.pem`, `key.pem` and `cert.pem`:
++   ```bash
++   kubectl create ns sriov-network-operator
++   kubectl -n sriov-network-operator create secret tls operator-webhook-service --cert=cert.pem --key=key.pem
++   kubectl -n sriov-network-operator create secret tls network-resources-injector-secret --cert=cert.pem --key=key.pem
++   export ENABLE_ADMISSION_CONTROLLER=true
++   export WEBHOOK_CA_BUNDLE=$(base64 -w 0 < cacert.pem)
++   make deploy-setup-k8s
++   ```
++
++2. Using https://cert-manager.io/, deploy it as:
++   ```bash
++   kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.0/cert-manager.yaml
++   ```
++
++   Define the appropriate Issuer and Certificates, as an example:
++   ```bash
++   kubectl create ns sriov-network-operator
++   cat <<EOF | kubectl apply -f -
++   apiVersion: cert-manager.io/v1
++   kind: ClusterIssuer
++   metadata:
++     name: selfsigned-issuer
++   spec:
++     selfSigned: {}
++   ---
++   apiVersion: cert-manager.io/v1
++   kind: Certificate
++   metadata:
++     name: sriov-network-operator-ca
++     namespace: sriov-network-operator
++   spec:
++     isCA: true
++     commonName: sriov-network-operator-ca
++     secretName: sriov-network-operator-ca
++     issuerRef:
++       name: selfsigned-issuer
++       kind: ClusterIssuer
++   ---
++   apiVersion: cert-manager.io/v1
++   kind: Issuer
++   metadata:
++     name: sriov-network-operator-ca
++     namespace: sriov-network-operator
++   spec:
++     ca:
++       secretName: sriov-network-operator-ca
++   ---
++   apiVersion: cert-manager.io/v1
++   kind: Certificate
++   metadata:
++     name: operator-webhook-service
++     namespace: sriov-network-operator
++   spec:
++     secretName: operator-webhook-service
++     dnsNames:
++     - operator-webhook-service.sriov-network-operator.svc
++     issuerRef:
++       name: sriov-network-operator-ca
++   ---
++   apiVersion: cert-manager.io/v1
++   kind: Certificate
++   metadata:
++     name: network-resources-injector-service
++     namespace: sriov-network-operator
++   spec:
++     secretName: network-resources-injector-secret
++     dnsNames:
++     - network-resources-injector-service.sriov-network-operator.svc
++     issuerRef:
++       name: sriov-network-operator-ca
++   EOF
++   ```
++
++    And then deploy the operator:
++    ```bash
++    export ENABLE_ADMISSION_CONTROLLER=true
++    make deploy-setup-k8s
++    ```
++
+ By default, the operator will be deployed in namespace 'sriov-network-operator' for Kubernetes cluster, you can check if the deployment is finished successfully.
+ 
+ ```bash
+diff --git a/hack/env.sh b/hack/env.sh
+index f1339e2c..52f8f709 100755
+--- a/hack/env.sh
++++ b/hack/env.sh
+@@ -34,3 +34,4 @@ export RESOURCE_PREFIX=${RESOURCE_PREFIX:-openshift.io}
+ export ENABLE_ADMISSION_CONTROLLER=${ENABLE_ADMISSION_CONTROLLER:-"true"}
+ export CLUSTER_TYPE=${CLUSTER_TYPE:-openshift}
+ export NAMESPACE=${NAMESPACE:-"openshift-sriov-network-operator"}
++export WEBHOOK_CA_BUNDLE=${WEBHOOK_CA_BUNDLE:-""}
+-- 
+2.26.2
+
