@@ -4,7 +4,7 @@ ifeq ($(ARCH),)
 ARCH=$(shell go env GOARCH)
 endif
 
-BUILD_META=-multiarch-build$(shell date +%Y%m%d)
+BUILD_META =? -multiarch-build$(shell date +%Y%m%d)
 ORG ?= rancher
 TAG ?= v1.0.0$(BUILD_META)
 export DOCKER_BUILDKIT?=1
