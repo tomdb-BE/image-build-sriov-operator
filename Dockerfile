@@ -1,7 +1,4 @@
-ARG TAG="v1.0.0"
 ARG UBI_IMAGE
-ARG GOLANG_VERSION
-ARG GOBORING_IMAGE=goboring/golang:${GOLANG_VERSION}
 ARG HARDENED_IMAGE
 
 FROM ${HARDENED_IMAGE} as base-builder
@@ -20,7 +17,34 @@ RUN cd sriov-network-operator \
     && make _build-manager \
     && make _build-webhook
 
-FROM ${GOBORING_IMAGE} as config-daemon-builder
+FROM buildpack-deps:buster-scm as goboring-image
+ARG ARCH=amd64
+ARG GO_VERSION="1.16.6"
+ARG BORING_VERSION=7
+# gcc for cgo
+RUN apt-get update && apt-get install -y --no-install-recommends \
+                g++ \
+                gcc \
+                libc6-dev \
+                make \
+                pkg-config \
+        && rm -rf /var/lib/apt/lists/*
+ENV GOLANG_VERSION=${VERSION}b${BORING_VERSION}
+RUN set -eux; \
+        \
+        url="https://golang.org/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz"; \
+        wget -O go.tgz "$url"; \
+        tar -C /usr/local -xzf go.tgz; \
+        rm go.tgz; \
+        \
+        export PATH="/usr/local/go/bin:$PATH"; \
+        go version
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+WORKDIR $GOPATH
+
+FROM goboring-image as config-daemon-builder
 ARG TAG
 ARG BUILD
 ENV VERSION_OVERRIDE=${TAG}${BUILD}
