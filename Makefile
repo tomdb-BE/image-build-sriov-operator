@@ -4,14 +4,12 @@ ifeq ($(ARCH),)
 ARCH=$(shell go env GOARCH)
 endif
 
-BUILD_META=-build$(shell date +%Y%m%d)
+BUILD_META=-multiarch-build$(shell date +%Y%m%d)
 ORG ?= rancher
 TAG ?= v1.0.0$(BUILD_META)
 export DOCKER_BUILDKIT?=1
-
-ifneq ($(DRONE_TAG),)
-TAG := $(DRONE_TAG)
-endif
+UBI_IMAGE ?= centos:7
+GOLANG_VERSION ?= 1.16.6b7
 
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
 $(error TAG needs to end with build metadata: $(BUILD_META))
@@ -20,10 +18,12 @@ endif
 .PHONY: image-build-operator
 image-build-operator:
 	docker build \
-		--pull \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--build-arg BUILD=$(BUILD_META) \
+                --build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+                --build-arg HARDENED_IMAGE=$(ORG)/hardened-build-base:v$(GOLANG_VERSION)-multiarch \
+                --build-arg UBI_IMAGE=$(UBI_IMAGE) \
 		--target operator \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG)-$(ARCH) \
@@ -48,10 +48,12 @@ image-scan-operator:
 .PHONY: image-build-network-config-daemon
 image-build-network-config-daemon:
 	docker build \
-		--pull \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--build-arg BUILD=$(BUILD_META) \
+                --build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+                --build-arg HARDENED_IMAGE=$(ORG)/hardened-build-base:v$(GOLANG_VERSION)-multiarch \
+                --build-arg UBI_IMAGE=$(UBI_IMAGE) \
 		--target config-daemon \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG)-$(ARCH) \
@@ -76,10 +78,12 @@ image-scan-network-config-daemon:
 .PHONY: image-build-sriov-network-webhook
 image-build-sriov-network-webhook:
 	docker build \
-		--pull \
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--build-arg BUILD=$(BUILD_META) \
+                --build-arg GOLANG_VERSION=$(GOLANG_VERSION) \
+                --build-arg HARDENED_IMAGE=$(ORG)/hardened-build-base:v$(GOLANG_VERSION)-multiarch \
+                --build-arg UBI_IMAGE=$(UBI_IMAGE) \
 		--target webhook \
 		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG)-$(ARCH) \
