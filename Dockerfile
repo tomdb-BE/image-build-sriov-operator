@@ -59,8 +59,7 @@ FROM ${UBI_IMAGE} as config-daemon
 ARG ARCH="amd64"
 WORKDIR /
 COPY centos.repo /etc/yum.repos.d/centos.repo
-RUN yum update -y \
-    && ARCH_DEP_PKGS=$(if [ "$(uname -m)" != "s390x" ]; then echo -n mstflint ; fi) \
+RUN ARCH_DEP_PKGS=$(if [ "$(uname -m)" != "s390x" ]; then echo -n mstflint ; fi) \
     && yum install -y $ARCH_DEP_PKGS \
     && rm -rf /var/cache/yum
 COPY --from=config-daemon-builder /go/sriov-network-operator/build/_output/linux/${ARCH}/sriov-network-config-daemon /usr/bin/
@@ -72,8 +71,6 @@ ENTRYPOINT ["/usr/bin/sriov-network-config-daemon"]
 # Create the webhook image
 FROM ${UBI_IMAGE} as webhook
 ARG ARCH="amd64"
-RUN yum update -y && \
-    rm -rf /var/cache/yum
 WORKDIR /
 LABEL io.k8s.display-name="sriov-network-webhook" \
       io.k8s.description="This is an admission controller webhook that mutates and validates customer resources of sriov network operator."
@@ -83,8 +80,6 @@ CMD ["/usr/bin/webhook"]
 # Create the operator image
 FROM ${UBI_IMAGE} as operator
 ARG ARCH="amd64"
-RUN yum update -y && \
-    rm -rf /var/cache/yum
 WORKDIR /
 COPY --from=builder /go/sriov-network-operator/build/_output/linux/${ARCH}/manager /usr/bin/sriov-network-operator
 COPY --from=builder /go/sriov-network-operator/bindata /bindata
