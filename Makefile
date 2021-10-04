@@ -6,7 +6,8 @@ endif
 
 BUILD_META=-build$(shell date +%Y%m%d)
 ORG ?= rancher
-TAG ?= v1.0.0$(BUILD_META)
+# last commit on 2021-10-06
+TAG ?= 14bd335c17c1b4c6cb7d37c2972c05cc62cadeeb$(BUILD_META)
 export DOCKER_BUILDKIT?=1
 
 ifneq ($(DRONE_TAG),)

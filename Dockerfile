@@ -1,16 +1,16 @@
-ARG TAG="v1.0.0"
+# last commit on 2021-10-06
+ARG TAG="14bd335c17c1b4c6cb7d37c2972c05cc62cadeeb"
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
-ARG GOBORING_IMAGE=goboring/golang:1.15.8b5
-ARG HARDENED_IMAGE=rancher/hardened-build-base:v1.15.8b5
+ARG GOBORING_IMAGE=goboring/golang:1.16.7b7
+ARG HARDENED_IMAGE=rancher/hardened-build-base:v1.16.7b7
 
 FROM ${HARDENED_IMAGE} as base-builder
 ARG TAG
 ARG BUILD
 ENV VERSION_OVERRIDE=${TAG}${BUILD}
-COPY patch patch
-RUN git clone --depth 1 --branch ${TAG} https://github.com/k8snetworkplumbingwg/sriov-network-operator \
+RUN git clone --depth 1 https://github.com/k8snetworkplumbingwg/sriov-network-operator \
     && cd sriov-network-operator \ 
-    && git apply ../patch/* \
+    && git checkout ${TAG} \ 
     && make clean
 
 FROM base-builder as builder
