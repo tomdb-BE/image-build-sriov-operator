@@ -8,7 +8,7 @@ FROM ${HARDENED_IMAGE} as base-builder
 ARG TAG
 ARG BUILD
 ENV VERSION_OVERRIDE=${TAG}${BUILD}
-RUN git clone --depth 1 https://github.com/k8snetworkplumbingwg/sriov-network-operator \
+RUN git clone https://github.com/k8snetworkplumbingwg/sriov-network-operator \
     && cd sriov-network-operator \ 
     && git checkout ${TAG} \ 
     && make clean
