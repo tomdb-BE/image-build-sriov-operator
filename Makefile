@@ -10,9 +10,10 @@ ORG ?= rancher
 TAG ?= 14bd335c17c1b4c6cb7d37c2972c05cc62cadeeb$(BUILD_META)
 export DOCKER_BUILDKIT?=1
 
-ifneq ($(DRONE_TAG),)
-TAG := $(DRONE_TAG)
-endif
+# Temporarily disable this as Github tags can't be a SHA (too long)
+#ifneq ($(DRONE_TAG),)
+#TAG := $(DRONE_TAG)
+#endif
 
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
 $(error TAG needs to end with build metadata: $(BUILD_META))
