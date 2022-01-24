@@ -1,8 +1,9 @@
 # last commit on 2021-10-06
-ARG TAG="14bd335c17c1b4c6cb7d37c2972c05cc62cadeeb"
+ARG TAG="v1.1.0"
+ARG GOBORING_VERSION=1.17.5
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
 ARG GOBORING_IMAGE=goboring/golang:1.16.7b7
-ARG HARDENED_IMAGE=rancher/hardened-build-base:v1.16.10b7
+ARG HARDENED_IMAGE=rancher/hardened-build-base:v${GOBORING_VERSION}b7
 
 FROM ${HARDENED_IMAGE} as base-builder
 ARG TAG
@@ -22,9 +23,16 @@ RUN cd sriov-network-operator \
 FROM ${GOBORING_IMAGE} as config-daemon-builder
 ARG TAG
 ARG BUILD
+ARG GOBORING_VERSION
+ADD https://go-boringcrypto.storage.googleapis.com/go${GOBORING_VERSION}b7.src.tar.gz /usr/local/boring.tgz
+WORKDIR /usr/local/boring
+RUN tar xzf ../boring.tgz
+WORKDIR /usr/local/boring/go/src
+RUN ./make.bash
 ENV VERSION_OVERRIDE=${TAG}${BUILD}
 ENV GOFLAGS=-trimpath
 COPY --from=base-builder /go/sriov-network-operator /go/sriov-network-operator
+WORKDIR /go
 RUN cd sriov-network-operator \
     && make _build-sriov-network-config-daemon \
     && make plugins
