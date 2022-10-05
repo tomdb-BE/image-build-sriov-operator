@@ -25,7 +25,7 @@ RUN cd sriov-network-operator \
     && make _build-sriov-network-config-daemon
 
 # Create the config daemon image
-FROM ${BCI_IMAGE}} as config-daemon
+FROM ${BCI_IMAGE} as config-daemon
 WORKDIR /
 COPY centos.repo /etc/yum.repos.d/centos.repo
 RUN zypper update -y \
