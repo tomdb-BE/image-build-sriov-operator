@@ -30,7 +30,7 @@ WORKDIR /
 COPY centos.repo /etc/yum.repos.d/centos.repo
 RUN zypper update -y \
     && ARCH_DEP_PKGS=$(if [ "$(uname -m)" != "s390x" ]; then echo -n mstflint ; fi) \
-    && zypper install hwdata $ARCH_DEP_PKGS
+    && zypper install -y hwdata $ARCH_DEP_PKGS
 COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/sriov-network-config-daemon /usr/bin/
 COPY --from=builder /go/sriov-network-operator/bindata /bindata
 ENTRYPOINT ["/usr/bin/sriov-network-config-daemon"]
