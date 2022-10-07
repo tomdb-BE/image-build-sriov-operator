@@ -36,7 +36,7 @@ COPY --from=builder /go/sriov-network-operator/bindata /bindata
 ENTRYPOINT ["/usr/bin/sriov-network-config-daemon"]
 
 # Create the webhook image
-FROM ${BCI_IMAGE}} as webhook
+FROM ${BCI_IMAGE} as webhook
 WORKDIR /
 LABEL io.k8s.display-name="sriov-network-webhook" \
       io.k8s.description="This is an admission controller webhook that mutates and validates customer resources of sriov network operator."
@@ -44,7 +44,7 @@ COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/webhook
 CMD ["/usr/bin/webhook"]
 
 # Create the operator image
-FROM ${BCI_IMAGE}} as operator
+FROM ${BCI_IMAGE} as operator
 WORKDIR /
 COPY --from=builder /go/sriov-network-operator/build/_output/linux/amd64/manager /usr/bin/sriov-network-operator
 COPY --from=builder /go/sriov-network-operator/bindata /bindata
