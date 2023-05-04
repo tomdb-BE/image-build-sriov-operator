@@ -24,6 +24,7 @@ image-build-operator:
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--build-arg BUILD=$(BUILD_META) \
+		--build-arg ORG=$(ORG) \
 		--target operator \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-operator:$(TAG)-$(ARCH) \
@@ -52,6 +53,7 @@ image-build-network-config-daemon:
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--build-arg BUILD=$(BUILD_META) \
+		--build-arg ORG=$(ORG) \
 		--target config-daemon \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-config-daemon:$(TAG)-$(ARCH) \
@@ -80,6 +82,7 @@ image-build-sriov-network-webhook:
 		--build-arg ARCH=$(ARCH) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
 		--build-arg BUILD=$(BUILD_META) \
+		--build-arg ORG=$(ORG) \
 		--target webhook \
 		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG) \
 		--tag $(ORG)/hardened-sriov-network-webhook:$(TAG)-$(ARCH) \

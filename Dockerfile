@@ -1,8 +1,8 @@
 # last commit on 2021-10-06
 ARG TAG="v1.2.0"
-ARG GOBORING_VERSION=1.18.5
-ARG BCI_IMAGE=registry.suse.com/bci/bci-base:latest
-ARG HARDENED_IMAGE=rancher/hardened-build-base:v${GOBORING_VERSION}b7
+ARG ORG=rancher
+ARG BCI_IMAGE=registry.suse.com/bci/bci-base:15.3.17.20.12
+ARG HARDENED_IMAGE=${ORG}/hardened-build-base:v1.20.3b1
 
 FROM ${HARDENED_IMAGE} as base-builder
 ARG TAG
